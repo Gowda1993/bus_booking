@@ -22,7 +22,7 @@ pipeline {
                 script {
                     rtServer(
                         id: "Artifact",
-                        url: "http://http://3.85.9.68:8082//artifactory",
+                        url: "http://3.85.9.68:8082//artifactory",
                         username: "admin",
                         password: "Gowda@2024"
                     )
