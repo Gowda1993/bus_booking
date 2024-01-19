@@ -1,7 +1,5 @@
 pipeline {
-    agent {
-        label 'slave1'
-    }
+    agent { label 'slave1' }
     stages {
         stage('checkout') {
             steps {
@@ -13,47 +11,51 @@ pipeline {
         stage('build') {
             steps {
                 script {
-                    sh 'mvn --version'
-                    sh 'mvn clean install'
+                    sh "mvn clean install"
                 }
             }
         }
 
-        stage('Show Contents of target') {
+        stage('Deploy to JFrog Artifactory') {
             steps {
+                // Remember this is the step which I followed for free style project.
                 script {
-                    // Print the contents of the target directory
-                    sh 'ls -l target'
+                    rtServer(
+                        id: "Artifact",
+                        url: "http://http://3.85.9.68:8082/artifactory",
+                        username: "admin",
+                        password: "Gowda@2024"
+                    )
                 }
             }
         }
 
-        stage('Run JAR Locally') {
+        stage('Upload') {
             steps {
                 script {
-                    // Run the JAR file using java -jar
-                    sh "nohup timeout 10s java -jar target/bus-booking-app-1.0-SNAPSHOT.jar > output.log 2>&1 &"
-                    // Sleep for a while to allow the application to start (adjust as needed)
-                    sleep 10
+                    // For my understanding, rtUpload is a part of JFrog Artifactory plugin to upload artifacts to artifacts repo
+                    rtUpload (
+                        serverId: 'Artifact',
+                        spec: '''{
+                            "files": [
+                                {
+                                    "pattern": "target/*.jar",
+                                    "target": "libs-release-local/"
+                                }
+                            ]
+                        }'''
+                    )
                 }
             }
         }
-        
-        stage('deploy') {
+
+        stage('Publish build info') {
             steps {
-                sh 'ssh root@172.31.22.10'
-                sh "scp /home/slave1/workspace/bus_booking_develop/target/bus-booking-app-1.0-SNAPSHOT.jar root@172.31.22.10:/opt/apache-tomcat-9.0.85/webapps/"
+                script {
+                    // For my understanding to publish build info
+                    rtPublishBuildInfo serverId: "Artifact"
+                }
             }
-        }
-        
     }
-        
-    post {
-        success {
-            echo "Build, Run, and Deployment to Tomcat successful!"
-        }
-        failure {
-            echo "Build, Run, and Deployment to Tomcat failed!"
-        }
     }
 }
